@@ -1,0 +1,12 @@
+/buildAndReleaseTask/.taskkey
+buildAndReleaseTask/node_modules
+
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+index.js
+
