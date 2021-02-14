@@ -1,0 +1,36 @@
+{
+  "manifestVersion": 1,
+  "id": "maven-authenticator-task",
+  "name": "Maven Authenticator task",
+  "version": "0.0.1",
+  "publisher": "edbras",
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "description": "Tools for building/releasing with Fabrikam. Includes one build/release task.",
+  "categories": [
+    "Azure Pipelines"
+  ],
+  "icons": {
+    "default": "images/extension-icon.png"
+  },
+  "files": [
+    {
+      "path": "mavenAuthenticatorTask"
+    }
+  ],
+  "contributions": [
+    {
+      "id": "custom-maven-authenticator-task",
+      "type": "ms.vss-distributed-task.task",
+      "targets": [
+        "ms.vss-distributed-task.tasks"
+      ],
+      "properties": {
+        "name": "mavenAuthenticatorTask"
+      }
+    }
+  ]
+}

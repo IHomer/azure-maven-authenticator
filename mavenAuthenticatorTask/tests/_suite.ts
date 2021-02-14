@@ -2,6 +2,9 @@ import * as path from 'path';
 import * as assert from 'assert';
 import * as ttm from 'azure-pipelines-task-lib/mock-test';
 
+/**
+ * see <a href="https://docs.microsoft.com/en-us/azure/devops/extend/develop/add-build-task?view=azure-devops">Reg guide</a>
+ */
 describe('Sample task tests', function () {
 
     before( function() {

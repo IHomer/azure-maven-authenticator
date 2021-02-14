@@ -1,5 +1,5 @@
-/buildAndReleaseTask/.taskkey
-buildAndReleaseTask/node_modules
+/mavenAuthenticatorTask/.taskkey
+mavenAuthenticatorTask/node_modules
 
 
 ### IntelliJ IDEA ###

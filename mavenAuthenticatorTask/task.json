@@ -1,0 +1,53 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
+  "id": "d20951f5-ecd9-49be-bca7-0da54501f3a4",
+  "name": "MavenAuthenticator",
+  "friendlyName": "maven  authenticator",
+  "description": "Used to provide the maven settings.xml with the necessary authentication information to connect to a remote repository.",
+  "helpMarkDown": "",
+  "category": "Utility",
+  "author": "Ed Bras, Max Hovens",
+  "version": {
+    "Major": 0,
+    "Minor": 1,
+    "Patch": 0
+  },
+  "instanceNameFormat": "Echo $(samplestring)",
+  "inputs": [
+    {
+      "name": "artifactsFeeds",
+      "type": "pickList",
+      "label": "Feeds",
+      "defaultValue": "",
+      "helpMarkdown": "Select one or multiple feeds to authenticate.",
+      "properties": {
+        "EditableOptions": "true",
+        "MultiSelectFlatList": "true"
+      }
+    },
+    {
+      "name": "mavenServiceConnections",
+      "label": "Credentials for repositories outside this organization/collection",
+      "helpMarkDown": "Credentials to use for external repositories located in the project's pom.xml.",
+      "type": "connectedService:externalmavenrepository",
+      "properties": {
+        "MultiSelectFlatList": "true"
+      }
+    }
+  ],
+  "execution": {
+    "Node10": {
+      "target": "mavenAuth.js"
+    }
+  },
+  "postjobexecution": {
+    "Node": {
+      "target": "cleanup.js",
+      "argumentFormat": ""
+    }
+  },
+  "messages": {
+    "Warning_NoEndpointsToAuth": "No repositories were selected to authenticate, please check your task configuration."
+  }
+}
+
