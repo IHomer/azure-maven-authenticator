@@ -1,7 +1,8 @@
 import fs = require('fs');
 import Q = require('q');
-import tl = require('azure-pipelines-task-lib/task');
+import taskLib = require('azure-pipelines-task-lib/task');
 import path = require('path');
+
 const stripbom = require('strip-bom');
 import {getSystemAccessToken} from 'azure-pipelines-tasks-artifacts-common/webapi'
 
@@ -19,20 +20,35 @@ import {
 } from "azure-pipelines-tasks-artifacts-common/serviceConnectionUtils";
 
 export const getInternalFeedsServerElements = (input: string) => {
-    const feeds: string[] = tl.getDelimitedInput(input, ",", false);
+    const feeds: string[] = taskLib.getDelimitedInput(input, ",", false);
     const serverElements: unknown[] = [];
+    const useHttpHeader = taskLib.getBoolInput("httpHeader");
 
     if (!feeds || feeds.length === 0) {
         return serverElements;
     }
 
-    tl.debug(tl.loc('Info_GeneratingInternalFeeds', feeds.length));
+    taskLib.debug(taskLib.loc('Info_GeneratingInternalFeeds', feeds.length));
     for (let feed of feeds) {
-        serverElements.push({
-            id: feed,
-            username: "AzureDevOps",
-            password: getSystemAccessToken()
-        });
+        if (useHttpHeader === true) {
+            serverElements.push({
+                id: feed,
+                configuration: {
+                    httpHeaders: {
+                        property: {
+                            name: "AzureDevOps",
+                            value: getSystemAccessToken()
+                        }
+                    }
+                }
+            });
+        } else {
+            serverElements.push({
+                id: feed,
+                username: "AzureDevOps",
+                password: getSystemAccessToken()
+            });
+        }
     }
 
     return serverElements;
@@ -45,7 +61,7 @@ export const getExternalServiceEndpointsServerElements = (input: string) => {
         return serverElements;
     }
 
-    tl.debug(tl.loc("Info_GeneratingExternalRepositories", serviceConnections.length));
+    taskLib.debug(taskLib.loc("Info_GeneratingExternalRepositories", serviceConnections.length));
     for (let serviceConnection of serviceConnections) {
         switch (serviceConnection.authType) {
             case (ServiceConnectionAuthType.UsernamePassword):
@@ -58,7 +74,7 @@ export const getExternalServiceEndpointsServerElements = (input: string) => {
 
                 });
 
-                tl.debug(`Detected username/password credentials for '${serviceConnection.packageSource.uri}'`);
+                taskLib.debug(`Detected username/password credentials for '${serviceConnection.packageSource.uri}'`);
                 break;
             case (ServiceConnectionAuthType.Token):
                 const tokenAuthInfo = serviceConnection as TokenServiceConnection;
@@ -67,7 +83,7 @@ export const getExternalServiceEndpointsServerElements = (input: string) => {
                     username: "AzureDevOps",
                     password: tokenAuthInfo.token
                 });
-                tl.debug(`Detected token credentials for '${serviceConnection.packageSource.uri}'`);
+                taskLib.debug(`Detected token credentials for '${serviceConnection.packageSource.uri}'`);
                 break;
             case (ServiceConnectionAuthType.PrivateKey):
                 const privateKeyAuthInfo = serviceConnection as PrivateKeyServiceConnection;
@@ -76,10 +92,10 @@ export const getExternalServiceEndpointsServerElements = (input: string) => {
                     privateKey: privateKeyAuthInfo.privateKey,
                     passphrase: privateKeyAuthInfo.passphrase
                 });
-                tl.debug(`Detected token credentials for '${serviceConnection.packageSource.uri}'`);
+                taskLib.debug(`Detected token credentials for '${serviceConnection.packageSource.uri}'`);
                 break;
             default:
-                throw Error(tl.loc('Error_InvalidServiceConnection', serviceConnection.packageSource.uri));
+                throw Error(taskLib.loc('Error_InvalidServiceConnection', serviceConnection.packageSource.uri));
         }
     }
 
@@ -150,8 +166,8 @@ const addPropToJson = (obj: any, propName: string, value: any): void => {
         if (obj[propName] instanceof Array) { // if the 'server' value is an array, append our value to this array
             let existing = obj[propName].find(containsId);
             if (existing) { // Skip replacing existing value.
-                tl.warning(tl.loc('Warning_FeedEntryAlreadyExists', value.id));
-                tl.debug('Entry: ' + value.id);
+                taskLib.warning(taskLib.loc('Warning_FeedEntryAlreadyExists', value.id));
+                taskLib.debug('Entry: ' + value.id);
             } else {
                 obj[propName].push(value);
             }
@@ -166,8 +182,8 @@ const addPropToJson = (obj: any, propName: string, value: any): void => {
     } else if (obj instanceof Array) { // If we simply get an array of 'server' objects
         let existing = obj.find(containsId);
         if (existing) {  // Don't replace existing value.
-            tl.warning(tl.loc('Warning_FeedEntryAlreadyExists', value.id));
-            tl.debug('Entry: ' + value.id);
+            taskLib.warning(taskLib.loc('Warning_FeedEntryAlreadyExists', value.id));
+            taskLib.debug('Entry: ' + value.id);
         } else { // Append our value to the 'server' array.
             let prop: { [key: string]: string; } = {};
             prop[propName] = value;

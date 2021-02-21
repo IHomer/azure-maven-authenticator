@@ -24,8 +24,8 @@ async function run(): Promise<void> {
         }
 
         // Determine the user's M2 folder:
-        let userM2FolderPath = taskLib.getPlatform() === taskLib.Platform.Windows ? path.join(<string> process.env.USERPROFILE, m2FolderName)
-            : path.join(<string> process.env.HOME, m2FolderName);
+        let userM2FolderPath = taskLib.getPlatform() === taskLib.Platform.Windows ? path.join(<string>process.env.USERPROFILE, m2FolderName)
+            : path.join(<string>process.env.HOME, m2FolderName);
 
         // Create user's M2 folder if not exists
         if (!taskLib.exist(userM2FolderPath)) {
