@@ -31,17 +31,7 @@ export const getInternalFeedsServerElements = (input: string) => {
     taskLib.debug(taskLib.loc('Info_GeneratingInternalFeeds', feeds.length));
     for (let feed of feeds) {
         if (useHttpHeader === true) {
-            serverElements.push({
-                id: feed,
-                configuration: {
-                    httpHeaders: {
-                        property: {
-                            name: "AzureDevOps",
-                            value: getSystemAccessToken()
-                        }
-                    }
-                }
-            });
+            addHttpHeaderConfig(serverElements, feed, "AzureDevOps", getSystemAccessToken());
         } else {
             serverElements.push({
                 id: feed,
@@ -56,6 +46,7 @@ export const getInternalFeedsServerElements = (input: string) => {
 
 export const getExternalServiceEndpointsServerElements = (input: string) => {
     const serviceConnections = getPackagingServiceConnections(input, ["REPOSITORYID"]);
+    const useHttpHeader = taskLib.getBoolInput("httpHeader");
     const serverElements: any[] = [];
     if (!serviceConnections || serviceConnections.length === 0) {
         return serverElements;
@@ -67,31 +58,47 @@ export const getExternalServiceEndpointsServerElements = (input: string) => {
             case (ServiceConnectionAuthType.UsernamePassword):
                 const usernamePasswordAuthInfo = serviceConnection as UsernamePasswordServiceConnection;
 
-                serverElements.push({
-                    id: getRepositoryId(serviceConnection),
-                    username: usernamePasswordAuthInfo.username,
-                    password: usernamePasswordAuthInfo.password,
+                if (useHttpHeader === true) {
+                    addHttpHeaderConfig(serverElements, getRepositoryId(serviceConnection), usernamePasswordAuthInfo.username,
+                        usernamePasswordAuthInfo.password);
+                } else {
+                    serverElements.push({
+                        id: getRepositoryId(serviceConnection),
+                        username: usernamePasswordAuthInfo.username,
+                        password: usernamePasswordAuthInfo.password,
 
-                });
+                    });
+                }
 
                 taskLib.debug(`Detected username/password credentials for '${serviceConnection.packageSource.uri}'`);
                 break;
             case (ServiceConnectionAuthType.Token):
                 const tokenAuthInfo = serviceConnection as TokenServiceConnection;
-                serverElements.push({
-                    id: getRepositoryId(serviceConnection),
-                    username: "AzureDevOps",
-                    password: tokenAuthInfo.token
-                });
+                if (useHttpHeader === true) {
+                    addHttpHeaderConfig(serverElements, getRepositoryId(serviceConnection), "AzureDevOps", tokenAuthInfo.token);
+                } else {
+                    serverElements.push({
+                        id: getRepositoryId(serviceConnection),
+                        username: "AzureDevOps",
+                        password: tokenAuthInfo.token
+                    });
+                }
+
                 taskLib.debug(`Detected token credentials for '${serviceConnection.packageSource.uri}'`);
                 break;
             case (ServiceConnectionAuthType.PrivateKey):
                 const privateKeyAuthInfo = serviceConnection as PrivateKeyServiceConnection;
-                serverElements.push({
-                    id: getRepositoryId(serviceConnection),
-                    privateKey: privateKeyAuthInfo.privateKey,
-                    passphrase: privateKeyAuthInfo.passphrase
-                });
+                if (useHttpHeader === true) {
+                    addHttpHeaderConfig(serverElements, getRepositoryId(serviceConnection), privateKeyAuthInfo.privateKey,
+                        privateKeyAuthInfo.passphrase);
+                } else {
+                    serverElements.push({
+                        id: getRepositoryId(serviceConnection),
+                        privateKey: privateKeyAuthInfo.privateKey,
+                        passphrase: privateKeyAuthInfo.passphrase
+                    });
+                }
+
                 taskLib.debug(`Detected token credentials for '${serviceConnection.packageSource.uri}'`);
                 break;
             default:
@@ -204,6 +211,20 @@ const writeJsonAsXmlFile = (filePath: string, jsonContent: any, rootName: string
     let xml = builder.buildObject(jsonContent);
     xml = xml.replace(/&#xD;/g, '');
     return writeFile(filePath, xml);
+}
+
+const addHttpHeaderConfig = (serverElements: any[], id: string | undefined, userName: string, password: string) => {
+    serverElements.push({
+        id: id,
+        configuration: {
+            httpHeaders: {
+                property: {
+                    name: userName,
+                    value: password,
+                }
+            }
+        }
+    });
 }
 
 const writeFile = (filePath: string, fileContent: string): Q.Promise<void> => {

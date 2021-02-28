@@ -19,6 +19,8 @@ const serverRegex = /<server>/mig;
 const configurationRegex = /<configuration>/mig;
 const httpHeaderRegex = /<httpHeaders>/mig;
 const propertyRegex = /<property>/mig;
+const nameRegex = /<name>/mig;
+const valueRegex = /<value>/mig;
 
 describe("authenticate azure artifacts feeds for maven", function () {
     this.timeout(parseInt(<string>process.env.TASK_TEST_TIMEOUT) || 20000);
@@ -145,17 +147,125 @@ describe("authenticate azure artifacts feeds for maven", function () {
         done();
     });
 
+    it("it should read the existing settings.xml and not add any new entries.", (done: Mocha.Done) => {
+        this.timeout(1000);
+
+        let taskFile: string = path.join(__dirname, "T1AuthSettingsXmlExists.js");
+
+        let testRunner: taskTest.MockTestRunner = new taskTest.MockTestRunner(taskFile);
+        taskLib.cp(settingsFeedName1, settingsXmlPath);
+
+        testRunner.run();
+
+        assert.strictEqual(taskLib.ls('-A', [m2DirPath]).length, 1, "Should have one file.");
+        const settingsXmlStats = taskLib.stats(settingsXmlPath);
+        assert(settingsXmlStats && settingsXmlStats.isFile(), "settings.xml file should be present.");
+
+        const data = fs.readFileSync(settingsXmlPath, 'utf-8');
+
+        assertServer(data, 1);
+        assertFeed(data, 'feedName1', 1);
+
+        assertNoError(testRunner);
+        assert(testRunner.stdOutContained("vso[task.issue type=warning;]loc_mock_Warning_FeedEntryAlreadyExists"), "Entry already exists warning should be displayed");
+        assert(testRunner.succeeded, "task should have succeeded");
+
+        done();
+    });
+
+    it("it should create a new settings.xml in the .m2 folder and add simple auth for 3 different types of service connections.", (done: Mocha.Done) => {
+        this.timeout(1000);
+
+        let taskFile: string = path.join(__dirname, "T1ServiceConnections.js");
+        let testRunner: taskTest.MockTestRunner = new taskTest.MockTestRunner(taskFile);
+
+        testRunner.run();
+
+        assert.strictEqual(taskLib.ls('-A', [m2DirPath]).length, 1, "Should have one file.");
+        const settingsXmlStats = taskLib.stats(settingsXmlPath);
+        assert(settingsXmlStats && settingsXmlStats.isFile(), "settings.xml file should be created.");
+
+        const data = fs.readFileSync(settingsXmlPath, 'utf-8');
+
+        assertServer(data, 3);
+        assertTokenBased(data);
+        assertUserNamePwd(data, 'AzureDevOps', '--token--');
+        assertUserNamePwdBased(data);
+        assertUserNamePwd(data, '--testUserName--', '--testPassword--');
+        assertPrivateKeyBased(data);
+        assertPrivateKey(data, 'privateKey', 'passphrase');
+
+        assertHttpHeader(data, 0);
+
+        assertNoError(testRunner);
+        assert(testRunner.succeeded, "task should have succeeded");
+
+        done();
+    });
+
+    it("it should create a new settings.xml in the .m2 folder and add http header auth for 3 different types of service connections.", (done: Mocha.Done) => {
+        this.timeout(1000);
+
+        let taskFile: string = path.join(__dirname, "T1HttpHeaderServiceConnections.js");
+        let testRunner: taskTest.MockTestRunner = new taskTest.MockTestRunner(taskFile);
+
+        testRunner.run();
+
+        assert.strictEqual(taskLib.ls('-A', [m2DirPath]).length, 1, "Should have one file.");
+        const settingsXmlStats = taskLib.stats(settingsXmlPath);
+        assert(settingsXmlStats && settingsXmlStats.isFile(), "settings.xml file should be created.");
+
+        const data = fs.readFileSync(settingsXmlPath, 'utf-8');
+
+        assertServer(data, 3);
+        assertTokenBased(data);
+        assertUserNamePwdBased(data);
+        assertPrivateKeyBased(data);
+
+        assertHttpHeader(data, 3);
+
+        assertNoError(testRunner);
+        assert(testRunner.succeeded, "task should have succeeded");
+
+        done();
+    });
+
 });
+
+const assertPrivateKeyBased = (data: string): void => {
+    assert.strictEqual(data.match(/<id>privateKeyBased<\/id>/gi)?.length, 1, "Only one privateKeyBased entry should be created.");
+}
+
+const assertUserNamePwdBased = (data: string): void => {
+    assert.strictEqual(data.match(/<id>usernamePasswordBased<\/id>/gi)?.length, 1, `Only one usernamePasswordBased entry should be created. Data: ${data}`);
+}
+
+const assertTokenBased = (data: string): void => {
+    assert.strictEqual(data.match(/<id>tokenBased<\/id>/gi)?.length, 1, `Only one tokenBased entry should be created. Data: ${data}`);
+}
+
+const assertUserNamePwd = (data: string, userName: string, pwd: string): void => {
+    assert.strictEqual(data.match(`<username>${userName}<\/username>/gi`)?.length, 1, `Only one username entry should be created for api token. Data: ${data}`);
+    assert.strictEqual(data.match(`<password>${pwd}<\/password>gi`)?.length, 1, `Only one password entry should be created for api token. Data: ${data} `);
+}
+
+const assertPrivateKey = (data: string, userName: string, pwd: string): void => {
+    assert.strictEqual(data.match(`<privateKey>${userName}<\/privateKey>/gi`)?.length, 1, `Only one username entry should be created for api token. Data: ${data}`);
+    assert.strictEqual(data.match(`<passphrase>${pwd}<\/passphrase>gi`)?.length, 1, `Only one password entry should be created for api token. Data: ${data} `);
+}
 
 const assertServer = (data: string, serverCount: number): void => {
     assert.strictEqual(matchCount(data, serversRegex), 1, "Only one <servers> entry should be created.");
-    assert.strictEqual(matchCount(data, serverRegex), serverCount, "2 <server> entries should be created.");
+    assert.strictEqual(matchCount(data, serverRegex), serverCount, `${serverCount} <server> entries should be created.`);
 }
 
 const assertHttpHeader = (data: string, serverCount: number): void => {
     assert.strictEqual(matchCount(data, configurationRegex), serverCount, `Only ${serverCount} <configuration> entry should be created. Data: ${data}`);
-    assert.strictEqual(matchCount(data, httpHeaderRegex), serverCount, `Only ${serverCount} <httpHeaders> entry should be created.`);
-    assert.strictEqual(matchCount(data, propertyRegex), serverCount, `Only ${serverCount} <property> entry should be created.`);
+    assert.strictEqual(matchCount(data, httpHeaderRegex), serverCount, `Only ${serverCount} <httpHeaders> entry should be created.  Data: ${data}`);
+    assert.strictEqual(matchCount(data, propertyRegex), serverCount, `Only ${serverCount} <property> entry should be created.  Data: ${data}`);
+    assert.strictEqual(matchCount(data, propertyRegex), serverCount, `Only ${serverCount} <property> entry should be created.  Data: ${data}`);
+    assert.strictEqual(matchCount(data, nameRegex), serverCount, `Only ${serverCount} <name> entry should be created.  Data: ${data}`);
+    assert.strictEqual(matchCount(data, valueRegex), serverCount, `Only ${serverCount} <value> entry should be created.  Data: ${data}`);
 }
 
 const assertFeed = (data: string, feedName: string, expectedCount: number): void => {
